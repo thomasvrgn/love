@@ -14,6 +14,7 @@ module IR where
   fromStmt (Sequence items) = "{" ++ intercalate "; " (map fromStmt items) ++ "}"
   fromStmt (Return v) = "return " ++ fromExpr v
   fromStmt (Expression e) = fromExpr e
+  fromStmt (Constant n v) = "const " ++ n ++ " = " ++ fromExpr v
 
   fromField :: (String, Expression) -> String
   fromField (name, expr) = name ++ ": " ++ fromExpr expr

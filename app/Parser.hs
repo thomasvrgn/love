@@ -10,7 +10,7 @@ module Parser where
   import Text.Parsec.Token (GenTokenParser)
   import Data.Functor.Identity (Identity)
   import Control.Applicative (Alternative(some))
-  
+
   {- AST DEFINITION -}
 
   data Expression
@@ -29,6 +29,7 @@ module Parser where
 
   data Statement
     = Assign String Expression
+    | Constant String Expression
     | Modify Expression Expression
     | Function String [String] Statement
     | Sequence [Statement]
@@ -48,7 +49,7 @@ module Parser where
               , Token.commentLine     = "//"
               , Token.identStart      = letter
               , Token.identLetter     = alphaNum
-              , Token.reservedNames   = ["func", "return", ":=", "struct", "="]
+              , Token.reservedNames   = ["func", "return", ":=", "struct", "=", "const"]
               , Token.reservedOpNames = ["+", "-", "*", "/", ":", ".", "(", ")", "[", "]"] }
 
   lexer :: GenTokenParser String u Identity
@@ -88,9 +89,16 @@ module Parser where
   statement :: Parser Statement
   statement
     = choice [
-      try modify, assign, Expression <$> expression,
+      constant, try modify, assign, Expression <$> expression,
       returnE, block, function
     ]
+
+  constant :: Parser Statement
+  constant = do
+    reserved "const"
+    name <- identifier
+    reserved ":="
+    Constant name <$> expression
 
   returnE :: Parser Statement
   returnE = do
@@ -111,7 +119,7 @@ module Parser where
 
   modifyID :: Parser Expression
   modifyID = try (do
-    x <- identifier 
+    x <- identifier
     reservedOp "."
     Property (Var x) <$> identifier) <|> (Var <$> identifier)
 
@@ -171,7 +179,7 @@ module Parser where
       return (name, value)
       ) comma
     return $ Struct fields
-  
+
   makeUnaryOp s = foldr1 (.) <$> some s
 
   table :: [[Operator String () Identity Expression]]

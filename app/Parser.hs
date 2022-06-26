@@ -23,10 +23,13 @@ module Parser where
     | Lambda [String] Statement
     | Struct [(String, Expression)]
     | Property Expression String
+    | List [Expression]
+    | Index Expression Expression
     deriving Show
 
   data Statement
     = Assign String Expression
+    | Modify Expression Expression
     | Function String [String] Statement
     | Sequence [Statement]
     | Return Expression
@@ -45,8 +48,8 @@ module Parser where
               , Token.commentLine     = "//"
               , Token.identStart      = letter
               , Token.identLetter     = alphaNum
-              , Token.reservedNames   = ["func", "return", ":=", "struct"]
-              , Token.reservedOpNames = ["+", "-", "*", "/", ":", ".", "(", ")"] }
+              , Token.reservedNames   = ["func", "return", ":=", "struct", "="]
+              , Token.reservedOpNames = ["+", "-", "*", "/", ":", ".", "(", ")", "[", "]"] }
 
   lexer :: GenTokenParser String u Identity
   lexer = Token.makeTokenParser languageDef
@@ -85,7 +88,7 @@ module Parser where
   statement :: Parser Statement
   statement
     = choice [
-      assign, Expression <$> expression,
+      try modify, assign, Expression <$> expression,
       returnE, block, function
     ]
 
@@ -102,6 +105,21 @@ module Parser where
     var <- identifier
     reserved ":="
     Assign var <$> expression
+
+  list :: Parser Expression
+  list = List <$> Token.brackets lexer (Token.commaSep lexer expression)
+
+  modifyID :: Parser Expression
+  modifyID = try (do
+    x <- identifier 
+    reservedOp "."
+    Property (Var x) <$> identifier) <|> (Var <$> identifier)
+
+  modify :: Parser Statement
+  modify = try $ do
+    var <- modifyID
+    reserved "="
+    Modify var <$> expression
 
   function :: Parser Statement
   function = do
@@ -131,7 +149,7 @@ module Parser where
 
   term :: Parser Expression
   term
-    = try floatLit <|> (Number <$> integer) <|> stringLit <|> try lambda
+    = try floatLit <|> (Number <$> integer) <|> stringLit <|> try list <|> try lambda
    <|> object <|> variable <|> parens expression
 
   variable :: Parser Expression
@@ -159,15 +177,19 @@ module Parser where
   table :: [[Operator String () Identity Expression]]
   table = [
       [Postfix $ makeUnaryOp do
-          reservedOp "."
-          id <- identifier
-          return (`Property` id)],
+        reservedOp "."
+        id <- identifier
+        return (`Property` id)],
       [Postfix $ makeUnaryOp do
-          reservedOp "("
-          args <- sepBy expression comma
-          reservedOp ")"
-          return (`Call` args)
-        ],
+        reservedOp "("
+        args <- sepBy expression comma
+        reservedOp ")"
+        return (`Call` args)],
+      [Postfix $ foldl1 (.) . reverse <$>some do
+        reservedOp "["
+        arg <- expression
+        reservedOp "]"
+        return (`Index` arg)],
       [Infix (reservedOp "*" >> return (Bin Mul)) AssocLeft,
       Infix (reservedOp "/" >> return (Bin Div)) AssocLeft],
       [Infix (reservedOp "+" >> return (Bin Add)) AssocLeft,

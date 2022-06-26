@@ -6,7 +6,7 @@
 		print("test");
 	});
 	
-	x := x.print("test");
+	x := x.y.t("test");
 
 	x := struct {
 		x: 5,

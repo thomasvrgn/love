@@ -1,0 +1,8 @@
+
+	func test(x) {
+		print(2);
+	}
+
+	(test(5))(5)
+	
+	x := bruh

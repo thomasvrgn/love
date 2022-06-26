@@ -1,8 +1,17 @@
-
+{
 	func test(x) {
-		print(2);
-	}
-
-	(test(5))(5)
+		print("Hello world");
+	};
+	(test(5))(func(x) {
+		print("test");
+	});
 	
-	x := bruh
+	x := x.print("test");
+
+	x := struct {
+		x: 5,
+		y: struct {
+			x: 5
+		}
+	};
+}

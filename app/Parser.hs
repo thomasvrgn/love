@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 module Parser where
   import Text.Parsec
   import Text.Parsec.Expr
@@ -8,7 +9,8 @@ module Parser where
   import Debug.Trace (traceShow)
   import Text.Parsec.Token (GenTokenParser)
   import Data.Functor.Identity (Identity)
-
+  import Control.Applicative (Alternative(some))
+  
   {- AST DEFINITION -}
 
   data Expression
@@ -20,7 +22,7 @@ module Parser where
     | Call Expression [Expression]
     | Lambda [String] Statement
     | Struct [(String, Expression)]
-    | Property String Expression
+    | Property Expression String
     deriving Show
 
   data Statement
@@ -44,7 +46,7 @@ module Parser where
               , Token.identStart      = letter
               , Token.identLetter     = alphaNum
               , Token.reservedNames   = ["func", "return", ":=", "struct"]
-              , Token.reservedOpNames = ["+", "-", "*", "/", ":", "."] }
+              , Token.reservedOpNames = ["+", "-", "*", "/", ":", ".", "(", ")"] }
 
   lexer :: GenTokenParser String u Identity
   lexer = Token.makeTokenParser languageDef
@@ -130,11 +132,7 @@ module Parser where
   term :: Parser Expression
   term
     = try floatLit <|> (Number <$> integer) <|> stringLit <|> try lambda
-   <|> call <|> try property <|> object <|> variable <|> parens expression
-
-  property :: Parser Expression
-  property 
-    = Property <$> identifier <*> (char '.' *> expression)
+   <|> object <|> variable <|> parens expression
 
   variable :: Parser Expression
   variable = Var <$> identifier
@@ -155,15 +153,21 @@ module Parser where
       return (name, value)
       ) comma
     return $ Struct fields
-
-  call :: Parser Expression
-  call = try $ do
-    e <- variable <|> parens expression
-    arg <- parens $ sepBy expression (char ',')
-    return $ Call e arg
+  
+  makeUnaryOp s = foldr1 (.) <$> some s
 
   table :: [[Operator String () Identity Expression]]
   table = [
+      [Postfix $ makeUnaryOp do
+          reservedOp "."
+          id <- identifier
+          return (`Property` id)],
+      [Postfix $ makeUnaryOp do
+          reservedOp "("
+          args <- sepBy expression comma
+          reservedOp ")"
+          return (`Call` args)
+        ],
       [Infix (reservedOp "*" >> return (Bin Mul)) AssocLeft,
       Infix (reservedOp "/" >> return (Bin Div)) AssocLeft],
       [Infix (reservedOp "+" >> return (Bin Add)) AssocLeft,

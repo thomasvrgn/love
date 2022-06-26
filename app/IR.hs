@@ -6,7 +6,10 @@ module IR where
   fromArgs xs = "(" ++ intercalate ", " xs ++ ")"
 
   fromStmt :: Statement -> String
-  fromStmt (Assign x e) = x ++ " = " ++ fromExpr e
+  fromStmt (Assign x e) = "let " ++ x ++ " = " ++ fromExpr e
+  fromStmt (Function name args (Expression e))
+    = name ++ " = " ++ fromArgs args ++ " => (" ++ fromExpr e ++ ")" 
+  fromStmt (Modify x e) = fromExpr x ++ " = " ++ fromExpr e
   fromStmt (Function name args body) = name ++ " = " ++ fromArgs args ++ " => " ++ fromStmt body
   fromStmt (Sequence items) = "{" ++ intercalate "; " (map fromStmt items) ++ "}"
   fromStmt (Return v) = "return " ++ fromExpr v
@@ -24,4 +27,6 @@ module IR where
   fromExpr (Call s args) = fromExpr s ++ "(" ++ intercalate ", " (map fromExpr args) ++ ")"
   fromExpr (Struct fields) = "{" ++ intercalate ", " (map fromField fields) ++ "}"
   fromExpr (Property e s) = fromExpr e ++ "." ++ s
+  fromExpr (Index e i) = fromExpr e ++ "[" ++ fromExpr i ++ "]"
+  fromExpr (List xs) = "[" ++ intercalate ", " (map fromExpr xs) ++ "]"
   fromExpr (Lambda args body) = fromArgs args ++ " => " ++ fromStmt body

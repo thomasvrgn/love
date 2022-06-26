@@ -13,6 +13,8 @@ module Parser where
 
   data Expression
     = Number Integer
+    | String String
+    | Float Float
     | Bin BinOp Expression Expression
     | Var String
     | Call Expression [Expression]
@@ -105,9 +107,23 @@ module Parser where
   expression :: Parser Expression
   expression = buildExpressionParser table term
 
+  stringLit :: Parser Expression
+  stringLit = do
+    char '"'
+    str <- many (noneOf "\"")
+    char '"'
+    return $ String str
+
+  floatLit :: Parser Expression
+  floatLit = do
+    num <- many1 digit
+    char '.'
+    dec <- many1 digit
+    return $ Float (read (num ++ "." ++ dec) :: Float)
+
   term :: Parser Expression
   term
-   = (Number <$> integer)
+    = try floatLit <|> (Number <$> integer) <|> stringLit
    <|> call <|> variable  <|> parens expression
 
   variable :: Parser Expression

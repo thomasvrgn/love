@@ -6,9 +6,9 @@ module Parser where
   import qualified Text.Parsec.Token as Token
   import Text.Parsec.Language (emptyDef)
   import Debug.Trace (traceShow)
-  import Text.Parsec.Token (GenTokenParser(comma))
+  import Text.Parsec.Token (GenTokenParser)
   import Data.Functor.Identity (Identity)
-  
+
   {- AST DEFINITION -}
 
   data Expression
@@ -18,6 +18,9 @@ module Parser where
     | Bin BinOp Expression Expression
     | Var String
     | Call Expression [Expression]
+    | Lambda [String] Statement
+    | Struct [(String, Expression)]
+    | Property String Expression
     deriving Show
 
   data Statement
@@ -40,15 +43,15 @@ module Parser where
               , Token.commentLine     = "//"
               , Token.identStart      = letter
               , Token.identLetter     = alphaNum
-              , Token.reservedNames   = ["func", "return", ":="]
-              , Token.reservedOpNames = ["+", "-", "*", "/"] }
+              , Token.reservedNames   = ["func", "return", ":=", "struct"]
+              , Token.reservedOpNames = ["+", "-", "*", "/", ":", "."] }
 
   lexer :: GenTokenParser String u Identity
   lexer = Token.makeTokenParser languageDef
 
   identifier :: Parser String
   identifier = Token.identifier lexer
-  
+
   reserved :: String -> Parser ()
   reserved   = Token.reserved lexer
 
@@ -64,13 +67,16 @@ module Parser where
   whiteSpace :: Parser ()
   whiteSpace = Token.whiteSpace lexer
 
+  comma :: Parser String
+  comma = Token.comma lexer
+
   semi :: Parser String
   semi = Token.semi lexer
 
   {- PARSER PART -}
-  
-  parser :: Parser [Statement]
-  parser = whiteSpace >> many statement
+
+  parser :: Parser Statement
+  parser = whiteSpace >> statement
 
   -- Statement parsing
 
@@ -123,11 +129,32 @@ module Parser where
 
   term :: Parser Expression
   term
-    = try floatLit <|> (Number <$> integer) <|> stringLit
-   <|> call <|> variable  <|> parens expression
+    = try floatLit <|> (Number <$> integer) <|> stringLit <|> try lambda
+   <|> call <|> try property <|> object <|> variable <|> parens expression
+
+  property :: Parser Expression
+  property 
+    = Property <$> identifier <*> (char '.' *> expression)
 
   variable :: Parser Expression
   variable = Var <$> identifier
+
+  lambda :: Parser Expression
+  lambda = do
+    reserved "func"
+    args <- parens (Token.commaSep lexer identifier)
+    Lambda args <$> statement
+
+  object :: Parser Expression
+  object = do
+    reserved "struct"
+    fields <- Token.braces lexer $ sepBy (try $ do
+      name <- identifier
+      reservedOp ":"
+      value <- expression
+      return (name, value)
+      ) comma
+    return $ Struct fields
 
   call :: Parser Expression
   call = try $ do

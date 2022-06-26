@@ -95,7 +95,7 @@ module Parser where
     Return <$> expression
 
   block :: Parser Statement
-  block = Sequence <$> Token.braces lexer (many (statement <* semi))
+  block = Sequence <$> Token.braces lexer (many statement)
 
   assign :: Parser Statement
   assign = try $ do

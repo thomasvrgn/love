@@ -4,8 +4,8 @@ module Main where
   import Core.Import.Mapping
   import Core.Import.Resolver
   import System.FilePath
-  import Core.Closure.Conversion
-  import Control.Monad.State (runState)
+  import Core.Compiler.Translation
+  import Core.Compiler.Types
   
   main :: IO ()
   main = do
@@ -17,5 +17,9 @@ module Main where
       Right x -> do
         res <- resolve (takeDirectory path) x
         let x' = fmap (runImportRemover . (`replace` x)) res
-        let x'' = fmap ((`runState` (([], []), 0)) . convertStmt) x'
-        print x''
+        --let x'' = fmap ((`runState` (([], []), 0)) . convertStmt) x'
+        --print x''
+        let x'' = fmap (from . compileStmt) x'
+        case x'' of
+          Left err -> print err
+          Right js -> writeFile (path -<.> "js") js

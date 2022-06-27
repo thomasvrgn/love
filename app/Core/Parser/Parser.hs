@@ -1,46 +1,16 @@
 {-# LANGUAGE BlockArguments #-}
-module Parser where
+module Core.Parser.Parser where
   import Text.Parsec
   import Text.Parsec.Expr
   import Text.Parsec.Char
   import Text.Parsec.String
   import qualified Text.Parsec.Token as Token
   import Text.Parsec.Language (emptyDef)
-  import Debug.Trace (traceShow)
   import Text.Parsec.Token (GenTokenParser)
   import Data.Functor.Identity (Identity)
   import Control.Applicative (Alternative(some))
-
-  {- AST DEFINITION -}
-
-  data Expression
-    = Number Integer
-    | String String
-    | Float Float
-    | Bin BinOp Expression Expression
-    | Var String
-    | Call Expression [Expression]
-    | Lambda [String] Statement
-    | Struct [(String, Expression)]
-    | Property Expression String
-    | List [Expression]
-    | Index Expression Expression
-    deriving Show
-
-  data Statement
-    = Assign String Expression
-    | Constant String Expression
-    | Modify Expression Expression
-    | Function String [String] Statement
-    | Sequence [Statement]
-    | Return Expression
-    | Expression Expression
-    deriving Show
-
-  data BinOp
-    = Add | Mul
-    | Neg | Div
-    deriving Show
+  import Core.Parser.AST
+  import Data.List
 
   {- LEXER PART -}
   languageDef =
@@ -49,7 +19,7 @@ module Parser where
               , Token.commentLine     = "//"
               , Token.identStart      = letter
               , Token.identLetter     = alphaNum
-              , Token.reservedNames   = ["func", "return", ":=", "struct", "=", "const"]
+              , Token.reservedNames   = ["func", "return", ":=", "struct", "=", "const", "import"]
               , Token.reservedOpNames = ["+", "-", "*", "/", ":", ".", "(", ")", "[", "]"] }
 
   lexer :: GenTokenParser String u Identity
@@ -59,16 +29,16 @@ module Parser where
   identifier = Token.identifier lexer
 
   reserved :: String -> Parser ()
-  reserved   = Token.reserved lexer
+  reserved = Token.reserved lexer
 
   reservedOp :: String -> Parser ()
   reservedOp = Token.reservedOp lexer
 
   parens :: Parser a -> Parser a
-  parens     = Token.parens lexer
+  parens = Token.parens lexer
 
   integer :: Parser Integer
-  integer    = Token.integer lexer
+  integer = Token.integer lexer
 
   whiteSpace :: Parser ()
   whiteSpace = Token.whiteSpace lexer
@@ -89,16 +59,15 @@ module Parser where
   statement :: Parser Statement
   statement
     = choice [
-      constant, try modify, assign, Expression <$> expression,
+      import', try modify, assign, Expression <$> expression,
       returnE, block, function
     ]
 
-  constant :: Parser Statement
-  constant = do
-    reserved "const"
-    name <- identifier
-    reserved ":="
-    Constant name <$> expression
+  import' :: Parser Statement
+  import' = do
+    reserved "import"
+    name <- sepBy identifier (char '.')
+    return . Import $ intercalate "/" name ++ ".love"
 
   returnE :: Parser Statement
   returnE = do
@@ -203,4 +172,5 @@ module Parser where
       [Infix (reservedOp "+" >> return (Bin Add)) AssocLeft,
       Infix (reservedOp "-" >> return (Bin Neg)) AssocLeft]
     ]
-  
+
+  parseLove = runParser parser () ""

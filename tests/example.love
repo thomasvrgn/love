@@ -1,0 +1,19 @@
+{
+	func message(cb) {
+		cb()
+		print("Hello, world!")
+	}
+
+	message(func(x) {
+		print(x)
+	})
+
+	x := struct {
+		v: 5,
+		x: 10
+	}
+
+	x.v = [[5, 2, 3], 2, 3]
+
+	print(x.v[0][1], a)
+}

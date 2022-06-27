@@ -26,12 +26,33 @@ executable parsing-tests
 
     -- Modules included in this executable, other than Main.
     other-modules:
-      Parser
-      IR
+      -- Parser related
+      Core.Parser.Parser
+      Core.Parser.AST
+        Core.Parser.AST.Definition
+        Core.Parser.AST.Pretty
+
+      -- Import related
+      Core.Import.Mapping
+      Core.Import.Resolver
+
+      -- Closure conversion related
+      Core.Closure.Types
+        Core.Closure.Types.Closure
+        Core.Closure.Types.Pretty
+      Core.Closure.Conversion
+
+      -- Utility related
+      Core.Utility.Color
+
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
         base ^>=4.14.3.0
       , parsec
+      , containers
+      , directory
+      , filepath
+      , mtl
     hs-source-dirs:   app
     default-language: Haskell2010

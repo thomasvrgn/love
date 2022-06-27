@@ -33,15 +33,6 @@ func main() {
 
 ## Some examples of Love
 
-### Constants
-Constants are a compile-time feature. They must be pure values and can only be assigned once.
-
-```go
-const x := 5
-const y := 6
-print(x + y)
-```
-
 ### Variables
 ```go
 x := 6

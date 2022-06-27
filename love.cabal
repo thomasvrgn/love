@@ -42,6 +42,12 @@ executable parsing-tests
         Core.Closure.Types.Pretty
       Core.Closure.Conversion
 
+      -- Compiler related
+      Core.Compiler.Translation
+      Core.Compiler.Types
+        Core.Compiler.Types.Javascript
+        Core.Compiler.Types.IR
+
       -- Utility related
       Core.Utility.Color
 

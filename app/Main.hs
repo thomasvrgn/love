@@ -1,15 +1,21 @@
 module Main where
   import Text.Parsec (runParser)
-  import Parser (parser)
-  import IR (fromStmt)
+  import Core.Parser.Parser (parser)
+  import Core.Import.Mapping
+  import Core.Import.Resolver
+  import System.FilePath
+  import Core.Closure.Conversion
+  import Control.Monad.State (runState)
   
   main :: IO ()
   main = do
-    input <- readFile "tests/example"
+    let path = "tests/example.love"
+    input <- readFile path
     let p = runParser parser () "" input
     case p of
       Left err -> print err
       Right x -> do
-        print x
-        let js = fromStmt x
-        writeFile "tests/example.js" js
+        res <- resolve (takeDirectory path) x
+        let x' = fmap (runImportRemover . (`replace` x)) res
+        let x'' = fmap ((`runState` (([], []), 0)) . convertStmt) x'
+        print x''

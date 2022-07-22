@@ -1,0 +1,8 @@
+{
+  user := struct {
+    name: 'Thomas',
+    age: 16
+  }
+  
+  print("Hello" user.name, "you're", user.age)
+}
